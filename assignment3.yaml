@@ -1,0 +1,89 @@
+- name: Configure NTP, Logging, Banner, and Timezone
+  hosts: routers
+  gather_facts: no
+  tasks:
+    - name: Configure NTP server
+      ios_config:
+        lines:
+          - ntp server time.google.com
+      register: ntp_result
+      
+    - name: Debug NTP configuration result
+      debug:
+        var: ntp_result
+
+    - name: Configure logging
+      ios_config:
+        lines:
+          - logging buffered 16384
+          - logging console warnings
+      register: logging_result
+      
+    - name: Debug logging configuration result
+      debug:
+        var: logging_result
+
+    - name: Set banner text based on hostname
+      set_fact:
+        banner_text: "{{ '*** CORE ROUTER - Authorized Access Only ***' if 'East' in inventory_hostname else '*** DISTRIBUTION ROUTER - Authorized Access Only ***' }}"
+
+    - name: Configure login banner
+      ios_config:
+        lines:
+          - banner login ^{{ banner_text }}^
+      register: banner_result
+      
+    - name: Debug banner configuration result
+      debug:
+        var: banner_result
+
+    - name: Configure timezone
+      ios_config:
+        lines:
+          - clock timezone CST -6
+      register: timezone_result
+      
+    - name: Debug timezone configuration result
+      debug:
+        var: timezone_result
+
+    - name: Verify NTP configuration
+      ios_command:
+        commands:
+          - show ntp status
+          - show ntp associations
+      register: ntp_verify
+      
+    - name: Debug NTP verification output
+      debug:
+        var: ntp_verify.stdout_lines
+
+    - name: Verify logging configuration
+      ios_command:
+        commands:
+          - show running-config | include logging
+      register: logging_verify
+      
+    - name: Debug logging verification output
+      debug:
+        var: logging_verify.stdout_lines
+
+    - name: Verify banner configuration
+      ios_command:
+        commands:
+          - show running-config | include banner
+      register: banner_verify
+      
+    - name: Debug banner verification output
+      debug:
+        var: banner_verify.stdout_lines
+
+    - name: Verify timezone configuration
+      ios_command:
+        commands:
+          - show clock
+      register: timezone_verify
+      
+    - name: Debug timezone verification output
+      debug:
+        var: timezone_verify.stdout_lines
